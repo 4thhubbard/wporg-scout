@@ -1,0 +1,53 @@
+# wporg-scout configuration
+# Copy to config.yaml and edit. config.yaml is gitignored.
+
+github:
+  # Open issues are pulled from each of these repos.
+  repos:
+    - WordPress/wporg-main-2022
+    - WordPress/wporg-news-2021
+    - WordPress/wporg-learn
+    - WordPress/wporg-pattern-directory
+    - WordPress/wporg-translate
+    - WordPress/openverse
+  # Optional: only pull issues with these labels (omit to pull all open issues)
+  # labels:
+  #   - good-first-issue
+  #   - help-wanted
+
+trac:
+  base_url: https://core.trac.wordpress.org
+  # Default Trac query: open tickets in dotorg-property components, no patches yet.
+  # See https://core.trac.wordpress.org/wiki/TracQuery for query syntax.
+  components:
+    - "Site"
+    - "Forums"
+    - "Login & Authentication"
+  status:
+    - new
+    - reopened
+  max_age_days: 365  # ignore very old, stale tickets in v1
+
+make_p2:
+  sites:
+    - https://make.wordpress.org/community/
+    - https://make.wordpress.org/design/
+    - https://make.wordpress.org/meta/
+  lookback_days: 30
+  # Lightweight pre-filter: only post titles/excerpts that match these regex
+  # patterns get sent to the LLM classifier (saves tokens on noise).
+  pre_filter_patterns:
+    - "(?i)broken|bug|issue|doesn't work|doesnt work"
+    - "(?i)should we|we should|proposal"
+    - "(?i)why is|why does|how do we"
+
+llm:
+  provider: openrouter
+  # Pick a fast/cheap model. Classification is short and structured.
+  model: anthropic/claude-haiku-4.5
+  # If you want to skip the LLM and just do keyword-rule classification, set
+  # this to "rules" instead.
+  # model: rules
+
+# Where the local SQLite DB lives. Default: ./scout.db next to this config.
+# db_path: ./scout.db

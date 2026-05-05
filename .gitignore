@@ -1,0 +1,9 @@
+.env
+config.yaml
+scout.db
+scout.db-journal
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
