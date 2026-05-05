@@ -4,7 +4,6 @@ A triage tool for WordPress.org work. Pulls open issues from across the
 WordPress.org tracker landscape (GitHub Issues, Trac, Make P2s), classifies
 each one, and gives you a ranked list of what's worth fixing next.
 
-Built for the meta-janitors mandate: "fix what you find."
 
 ## Why this exists
 
@@ -94,10 +93,7 @@ llm:
 - Cleaner LLM SDKs
 - Built-in `sqlite3`
 - Trivial to deploy as a CLI
-- Mary already runs Python locally for the RSM pipeline
 
-If you want to call this from PHP later (e.g., to wire into a wporg admin
-page), shell out to it.
 
 ## License + provenance
 
