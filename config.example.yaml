@@ -17,7 +17,7 @@ github:
 
 trac:
   base_url: https://core.trac.wordpress.org
-  # Default Trac query: open tickets in dotorg-property components, no patches yet.
+  # Default: dotorg-property components, not core dev work.
   # See https://core.trac.wordpress.org/wiki/TracQuery for query syntax.
   components:
     - "Site"
@@ -26,20 +26,18 @@ trac:
   status:
     - new
     - reopened
-  max_age_days: 365  # ignore very old, stale tickets in v1
+  max_age_days: 365
 
 make_p2:
-  sites:
-    - https://make.wordpress.org/community/
-    - https://make.wordpress.org/design/
-    - https://make.wordpress.org/meta/
+  # Disabled by default in v1 — P2 posts are mostly status updates, too noisy.
+  # To enable, add sites to the list:
+  #   sites:
+  #     - https://make.wordpress.org/community/
+  #     - https://make.wordpress.org/design/
+  #     - https://make.wordpress.org/meta/
+  sites: []
   lookback_days: 30
-  # Lightweight pre-filter: only post titles/excerpts that match these regex
-  # patterns get sent to the LLM classifier (saves tokens on noise).
-  pre_filter_patterns:
-    - "(?i)broken|bug|issue|doesn't work|doesnt work"
-    - "(?i)should we|we should|proposal"
-    - "(?i)why is|why does|how do we"
+  pre_filter_patterns: []
 
 llm:
   provider: openrouter
