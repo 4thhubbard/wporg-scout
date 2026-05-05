@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
 
 import click
 from dotenv import load_dotenv
@@ -11,6 +12,8 @@ from dotenv import load_dotenv
 from scout import classify as classifier
 from scout import config as config_module
 from scout import db
+from scout import digest as digest_module
+from scout import work as work_module
 from scout.sources import github, make_p2, trac
 
 load_dotenv()  # pulls GITHUB_TOKEN, OPENROUTER_API_KEY from .env if present
@@ -46,13 +49,13 @@ def sync(ctx: click.Context, source: str) -> None:
     counts = {"github": 0, "trac": 0, "make_p2": 0}
 
     with db.connect(cfg.db_path) as conn:
-        if source in ("github", "all"):
+        if source in ("github", "all") and cfg.github_repos:
             click.echo(f"→ github: pulling from {len(cfg.github_repos)} repo(s)…")
             for item in github.fetch_all(cfg.github_repos, labels=cfg.github_labels):
                 db.upsert(conn, item)
                 counts["github"] += 1
 
-        if source in ("trac", "all"):
+        if source in ("trac", "all") and cfg.trac_components:
             click.echo(f"→ trac: pulling from {cfg.trac_base_url}…")
             for item in trac.fetch_all(
                 cfg.trac_base_url,
@@ -63,7 +66,7 @@ def sync(ctx: click.Context, source: str) -> None:
                 db.upsert(conn, item)
                 counts["trac"] += 1
 
-        if source in ("make_p2", "all"):
+        if source in ("make_p2", "all") and cfg.p2_sites:
             click.echo(f"→ make_p2: pulling from {len(cfg.p2_sites)} site(s)…")
             for item in make_p2.fetch_all(
                 cfg.p2_sites,
@@ -178,6 +181,68 @@ def stats(ctx: click.Context) -> None:
     click.echo("\nBy classification:")
     for k, v in sorted(s["by_classification"].items()):
         click.echo(f"  {k:<18} {v}")
+
+
+@cli.command()
+@click.option(
+    "--top",
+    default=digest_module.TOP_PER_CATEGORY,
+    show_default=True,
+    help="Items to show per category.",
+)
+@click.option(
+    "--out",
+    type=click.Path(dir_okay=False, writable=True),
+    default=None,
+    help="Write to this file instead of stdout.",
+)
+@click.pass_context
+def digest(ctx: click.Context, top: int, out: str | None) -> None:
+    """Render the triage queue as a markdown digest."""
+    cfg = ctx.obj["config"]
+    with db.connect(cfg.db_path) as conn:
+        text = digest_module.render(conn, top_per_category=top)
+    if out:
+        Path(out).write_text(text)
+        click.echo(f"✓ wrote digest to {out}")
+    else:
+        click.echo(text)
+
+
+@cli.command()
+@click.argument("item_id", type=int)
+@click.option(
+    "--auto",
+    is_flag=True,
+    help="Spawn `claude` CLI in the worktree once it's set up.",
+)
+@click.pass_context
+def work(ctx: click.Context, item_id: int, auto: bool) -> None:
+    """Set up a worktree + branch + context for an item, ready for Claude Code."""
+    cfg = ctx.obj["config"]
+    with db.connect(cfg.db_path) as conn:
+        try:
+            setup = work_module.setup_worktree(conn, item_id)
+        except work_module.WorkError as e:
+            click.echo(f"✗ {e}", err=True)
+            sys.exit(1)
+
+    click.echo(f"✓ worktree ready: {setup.worktree_path}")
+    click.echo(f"  branch:  {setup.branch}")
+    click.echo(f"  context: {setup.context_path}")
+    click.echo(f"  repo:    {setup.repo}")
+
+    if auto:
+        click.echo("\n→ spawning claude…")
+        try:
+            rc = work_module.spawn_claude(setup)
+            sys.exit(rc)
+        except work_module.WorkError as e:
+            click.echo(f"✗ {e}", err=True)
+            sys.exit(1)
+    else:
+        click.echo("\nNext step:")
+        click.echo(f"  cd {setup.worktree_path} && claude")
 
 
 if __name__ == "__main__":
