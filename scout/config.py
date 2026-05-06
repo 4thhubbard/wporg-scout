@@ -17,6 +17,7 @@ DEFAULTS = {
         "max_age_days": 365,
     },
     "make_p2": {"sites": [], "lookback_days": 30, "pre_filter_patterns": []},
+    "classify": {"allowlist": []},
     "llm": {"provider": "openrouter", "model": "anthropic/claude-haiku-4.5"},
     "db_path": "./scout.db",
 }
@@ -33,6 +34,12 @@ class Config:
     p2_sites: list[str] = field(default_factory=list)
     p2_lookback_days: int = 30
     p2_pre_filter_patterns: list[str] = field(default_factory=list)
+    # Classify allowlist: list of external_id prefixes. If non-empty, only items
+    # whose external_id starts with one of these prefixes get LLM-classified.
+    # Empty list (default) = classify everything that's been synced.
+    # Examples: "WordPress/wporg-main-2022" (a single GitHub repo),
+    #           "github" (all GitHub items), "trac" (all Trac tickets).
+    classify_allowlist: list[str] = field(default_factory=list)
     llm_model: str = "anthropic/claude-haiku-4.5"
     db_path: str = "./scout.db"
 
@@ -49,6 +56,7 @@ def load(path: str | Path = "config.yaml") -> Config:
     gh = {**DEFAULTS["github"], **(raw.get("github") or {})}
     tr = {**DEFAULTS["trac"], **(raw.get("trac") or {})}
     p2 = {**DEFAULTS["make_p2"], **(raw.get("make_p2") or {})}
+    cl = {**DEFAULTS["classify"], **(raw.get("classify") or {})}
     llm = {**DEFAULTS["llm"], **(raw.get("llm") or {})}
 
     return Config(
@@ -61,6 +69,7 @@ def load(path: str | Path = "config.yaml") -> Config:
         p2_sites=list(p2.get("sites") or []),
         p2_lookback_days=int(p2.get("lookback_days") or 30),
         p2_pre_filter_patterns=list(p2.get("pre_filter_patterns") or []),
+        classify_allowlist=list(cl.get("allowlist") or []),
         llm_model=llm.get("model") or "anthropic/claude-haiku-4.5",
         db_path=raw.get("db_path") or "./scout.db",
     )

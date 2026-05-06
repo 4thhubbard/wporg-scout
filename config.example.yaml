@@ -39,6 +39,27 @@ make_p2:
   lookback_days: 30
   pre_filter_patterns: []
 
+# Optional. Filter which synced items get LLM-classified. Empty list (default)
+# = classify everything. Non-empty = only items whose external_id starts with
+# one of these prefixes get classified. Useful for focusing on the repos /
+# sources you actually want to triage and skipping noise from others.
+#
+# Example: dotorg-property focus (skip openverse and other internal repos)
+#   classify:
+#     allowlist:
+#       - WordPress/wporg-main-2022
+#       - WordPress/wporg-news-2021
+#       - WordPress/wporg-learn
+#       - WordPress/wporg-pattern-directory
+#       - WordPress/wporg-translate
+#       - trac
+#
+# Items outside the allowlist remain in the DB unclassified — they don't show
+# up in categorized digest sections, only in the unclassified count. You can
+# always remove the allowlist later to back-fill them.
+classify:
+  allowlist: []
+
 llm:
   provider: openrouter
   # Pick a fast/cheap model. Classification is short and structured.

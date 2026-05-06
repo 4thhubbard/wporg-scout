@@ -19,6 +19,13 @@ from scout.sources import github, make_p2, trac
 load_dotenv()  # pulls GITHUB_TOKEN, OPENROUTER_API_KEY from .env if present
 
 
+def _matches_allowlist(external_id: str, allowlist: list[str]) -> bool:
+    """An empty allowlist means 'allow everything'. Otherwise prefix-match."""
+    if not allowlist:
+        return True
+    return any(external_id.startswith(prefix) for prefix in allowlist)
+
+
 @click.group()
 @click.option(
     "--config",
@@ -89,10 +96,26 @@ def sync(ctx: click.Context, source: str) -> None:
 )
 @click.pass_context
 def classify(ctx: click.Context, limit: int) -> None:
-    """Run the LLM classifier on un-classified items."""
+    """Run the LLM classifier on un-classified items.
+
+    If `classify.allowlist` is set in config, items outside the allowlist are
+    skipped — they stay in the DB but don't get an LLM call. Useful for
+    focusing classification on the repos/sources you actually care about.
+    """
     cfg = ctx.obj["config"]
+    allowlist = cfg.classify_allowlist
     with db.connect(cfg.db_path) as conn:
-        rows = db.unclassified(conn, limit=limit)
+        # Pull a generous batch so the post-allowlist filter still has options
+        fetch_limit = limit * 5 if allowlist else limit
+        rows = db.unclassified(conn, limit=fetch_limit)
+        if allowlist:
+            rows = [r for r in rows if _matches_allowlist(r["external_id"], allowlist)]
+            rows = rows[:limit]
+            click.echo(
+                f"→ classify allowlist active ({len(allowlist)} prefix(es)): "
+                + ", ".join(allowlist)
+            )
+
         if not rows:
             click.echo("Nothing to classify.")
             return
